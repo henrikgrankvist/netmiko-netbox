@@ -1,0 +1,2 @@
+netmiko==4.4.0
+pynetbox==7.4.0
