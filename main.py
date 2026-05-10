@@ -1,5 +1,4 @@
 import argparse
-import re
 import sys
 
 from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
@@ -27,29 +26,19 @@ def gather_device_info(host, username, password):
     }
     print(f"Connecting to {host}...")
     connection = ConnectHandler(**device)
-    output = connection.send_command("show version")
+    parsed = connection.send_command("show version", use_textfsm=True)
     connection.disconnect()
 
-    info = {}
+    # TextFSM returns a list of dicts; take the first entry
+    data = parsed[0] if isinstance(parsed, list) and parsed else {}
 
-    match = re.search(r"^(\S+)\s+uptime", output, re.MULTILINE)
-    info["hostname"] = match.group(1) if match else host
-
-    match = re.search(r"Cisco IOS.*?Version\s+([\w().]+)", output)
-    info["os_version"] = match.group(1) if match else "unknown"
-
-    match = re.search(r"(?:Model Number|cisco)\s*:\s*(\S+)|^[Cc]isco\s+(\S+)\s+\(", output, re.MULTILINE)
-    if match:
-        info["model"] = match.group(1) or match.group(2)
-    else:
-        info["model"] = "unknown"
-
-    match = re.search(r"Processor board ID\s+(\S+)", output)
-    info["serial"] = match.group(1) if match else "unknown"
-
-    info["ip"] = host
-
-    return info
+    return {
+        "hostname": data.get("hostname") or host,
+        "os_version": data.get("version", "unknown"),
+        "model": data.get("hardware", ["unknown"])[0] if data.get("hardware") else "unknown",
+        "serial": data.get("serial", ["unknown"])[0] if data.get("serial") else "unknown",
+        "ip": host,
+    }
 
 
 def sync_to_netbox(info, netbox_url, netbox_token):
