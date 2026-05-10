@@ -35,6 +35,10 @@ All logic lives in `main.py`. The flow is:
 
 4. **`_ensure_manufacturer`** — Helper used by both device type paths to get-or-create the manufacturer in NetBox.
 
+## Git commits
+
+After every change, commit with a short, descriptive message that states what changed and why — enough context to understand the change from `git log` alone and to safely roll back if needed. Commit each logical change separately rather than batching unrelated edits together.
+
 ## Key details
 
 - `requests` and `pyyaml` are transitive dependencies (via `pynetbox` and `netmiko`) — do not add them to `requirements.txt` explicitly.
