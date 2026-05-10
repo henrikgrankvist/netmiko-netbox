@@ -1,10 +1,15 @@
 import argparse
 import sys
 
+import os
+
 import requests
 import yaml
+from dotenv import load_dotenv
 from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
 import pynetbox
+
+load_dotenv()
 
 DEVICETYPE_LIBRARY = "netbox-community/devicetype-library"
 GITHUB_RAW = "https://raw.githubusercontent.com"
@@ -18,8 +23,6 @@ def parse_args():
     parser.add_argument("--host", required=True, help="Device IP or hostname")
     parser.add_argument("--username", required=True, help="SSH username")
     parser.add_argument("--password", required=True, help="SSH password")
-    parser.add_argument("--netbox-url", required=True, help="NetBox base URL (e.g. http://netbox.local)")
-    parser.add_argument("--netbox-token", required=True, help="NetBox API token")
     return parser.parse_args()
 
 
@@ -225,6 +228,12 @@ def sync_to_netbox(info, netbox_url, netbox_token):
 def main():
     args = parse_args()
 
+    netbox_url = os.getenv("NETBOX_URL")
+    netbox_token = os.getenv("NETBOX_TOKEN")
+    if not netbox_url or not netbox_token:
+        print("Error: NETBOX_URL and NETBOX_TOKEN must be set in .env")
+        sys.exit(1)
+
     try:
         info = gather_device_info(args.host, args.username, args.password)
     except NetmikoAuthenticationException:
@@ -241,7 +250,7 @@ def main():
     print(f"  OS Version: {info['os_version']}")
     print(f"  Interfaces: {len(info['interfaces'])} found")
 
-    sync_to_netbox(info, args.netbox_url, args.netbox_token)
+    sync_to_netbox(info, netbox_url, netbox_token)
 
 
 if __name__ == "__main__":

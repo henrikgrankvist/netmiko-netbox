@@ -11,13 +11,20 @@ python -m venv venv
 
 ## Running the script
 
+Copy `.env.example` to `.env` and fill in your NetBox details:
+
+```
+NETBOX_URL=http://your-netbox-server
+NETBOX_TOKEN=your_api_token_here
+```
+
+Then run:
+
 ```powershell
 .\venv\Scripts\python main.py `
   --host <device-ip> `
   --username <user> `
-  --password <pass> `
-  --netbox-url http://<netbox-host> `
-  --netbox-token <api-token>
+  --password <pass>
 ```
 
 ## Architecture
