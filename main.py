@@ -183,8 +183,11 @@ def create_custom_device_type(nb, info):
     return device_type
 
 
-def sync_to_netbox(info, netbox_url, netbox_token):
+def sync_to_netbox(info, netbox_url, netbox_token, verify=True):
     nb = pynetbox.api(netbox_url, token=netbox_token)
+
+    if not verify:
+        nb.verify = False
 
     device_type = nb.dcim.device_types.get(model=info["model"])
     if not device_type:
@@ -250,7 +253,7 @@ def main():
     print(f"  OS Version: {info['os_version']}")
     print(f"  Interfaces: {len(info['interfaces'])} found")
 
-    sync_to_netbox(info, netbox_url, netbox_token)
+    sync_to_netbox(info, netbox_url, netbox_token, verify=False)
 
 
 if __name__ == "__main__":
