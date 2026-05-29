@@ -183,6 +183,62 @@ def create_custom_device_type(nb, info):
     return device_type
 
 
+def _set_primary_ip(nb, device, host_ip):
+    """Assign host_ip to a device interface and set it as the device's primary_ip4."""
+    device_interfaces = list(nb.dcim.interfaces.filter(device_id=device.id))
+    interface_id_map = {iface.id: iface for iface in device_interfaces}
+
+    # Check if host_ip is already assigned to one of this device's interfaces
+    matching_ips = list(nb.ipam.ip_addresses.filter(address=host_ip))
+    target_interface = None
+    target_ip_obj = None
+
+    for ip_obj in matching_ips:
+        obj_type = getattr(ip_obj, "assigned_object_type", None)
+        obj_id = getattr(ip_obj, "assigned_object_id", None)
+        if obj_type == "dcim.interface" and obj_id in interface_id_map:
+            target_interface = interface_id_map[obj_id]
+            target_ip_obj = ip_obj
+            break
+
+    if target_interface is None:
+        # Pick an existing interface or create a Management one
+        if device_interfaces:
+            for iface in device_interfaces:
+                if "mgmt" in iface.name.lower() or "management" in iface.name.lower():
+                    target_interface = iface
+                    break
+            if target_interface is None:
+                target_interface = device_interfaces[0]
+        else:
+            target_interface = nb.dcim.interfaces.create(
+                device=device.id,
+                name="Management",
+                type="other",
+            )
+            print(f"Created interface 'Management' on device '{device.name}'.")
+
+        if matching_ips:
+            target_ip_obj = matching_ips[0]
+            target_ip_obj.update({
+                "assigned_object_type": "dcim.interface",
+                "assigned_object_id": target_interface.id,
+            })
+        else:
+            target_ip_obj = nb.ipam.ip_addresses.create(
+                address=f"{host_ip}/32",
+                status="active",
+                assigned_object_type="dcim.interface",
+                assigned_object_id=target_interface.id,
+            )
+            print(f"Created IP address {host_ip}/32 in NetBox.")
+
+        print(f"Assigned {target_ip_obj.address} to interface '{target_interface.name}'.")
+
+    device.update({"primary_ip4": target_ip_obj.id})
+    print(f"Set primary IP of '{device.name}' to {target_ip_obj.address}.")
+
+
 def sync_to_netbox(info, netbox_url, netbox_token, verify=True):
     nb = pynetbox.api(netbox_url, token=netbox_token)
 
@@ -222,10 +278,13 @@ def sync_to_netbox(info, netbox_url, netbox_token, verify=True):
 
     if existing:
         existing.update(payload)
+        device = existing
         print(f"Updated device '{info['hostname']}' in NetBox.")
     else:
-        nb.dcim.devices.create(**payload)
+        device = nb.dcim.devices.create(**payload)
         print(f"Created device '{info['hostname']}' in NetBox.")
+
+    _set_primary_ip(nb, device, info["ip"])
 
 
 def main():
