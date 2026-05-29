@@ -39,9 +39,9 @@ def _interface_type(name):
     return "other"
 
 
-def gather_device_info(host, username, password):
+def gather_device_info(host, username, password, device_type="cisco_xe"):
     device = {
-        "device_type": "cisco_ios",
+        "device_type": device_type,
         "host": host,
         "username": username,
         "password": password,
